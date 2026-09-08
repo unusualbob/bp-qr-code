@@ -1,29 +1,31 @@
-import { expect, h, render } from '@stencil/vitest';
+import { describe, expect, h, it, render } from '@stencil/vitest';
 
 describe('bp-qr-code', () => {
   it('renders a QR code and exposes its module count', async () => {
     const { root } = await render(
       <bp-qr-code contents="bitcoin:?r=https://bitpay.com/i/example" />
     );
+    const qr = root as any;
 
     expect(root.shadowRoot?.querySelector('svg')).not.toBeNull();
     expect(root.shadowRoot?.querySelectorAll('.module').length).toBeGreaterThan(0);
-    await expect(root.getModuleCount()).resolves.toBeGreaterThan(0);
+    await expect(qr.getModuleCount()).resolves.toBeGreaterThan(0);
   });
 
   it('rerenders when contents and protocol change and emits codeRendered', async () => {
     const { root, waitForChanges } = await render(
       <bp-qr-code contents="bitcoin:initial" protocol="bitcoin" />
     );
+    const qr = root as any;
     let renderEvents = 0;
     root.addEventListener('codeRendered', () => renderEvents++);
 
-    root.contents = 'bitcoin:updated';
-    root.protocol = 'BITCOIN';
+    qr.contents = 'bitcoin:updated';
+    qr.protocol = 'BITCOIN';
     await waitForChanges();
 
-    expect(root.contents).toBe('bitcoin:updated');
-    expect(root.protocol).toBe('BITCOIN');
+    expect(qr.contents).toBe('bitcoin:updated');
+    expect(qr.protocol).toBe('BITCOIN');
     expect(renderEvents).toBeGreaterThan(0);
   });
 
