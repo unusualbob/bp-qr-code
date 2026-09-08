@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>bp-qr-code CSP smoke test</title>
+    <script type="module" src="/dist/components/bp-qr-code.js"></script>
+  </head>
+  <body>
+    <bp-qr-code
+      id="qr1"
+      contents="bitcoin:?r=https://bitpay.com/i/csp-test"
+      module-color="#000000"
+      position-ring-color="#000000"
+      position-center-color="#000000"
+      mask-x-to-y-ratio="1.2"
+    >
+      <img src="/src/assets/btc.svg" slot="icon" alt="Bitcoin" />
+    </bp-qr-code>
+  </body>
+</html>

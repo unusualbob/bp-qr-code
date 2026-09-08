@@ -27,8 +27,8 @@
   ],
   "scripts": {
     "build": "stencil build --prod && npm run csp:check",
-    "watch": "stencil build --dev --watch --serve",
-    "watch:prod": "stencil build --watch --serve --prod",
+    "watch": "stencil build --dev --watch",
+    "watch:prod": "stencil build --watch --prod",
     "start": "npm run watch",
     "test": "stencil-test --prod",
     "test:watch": "stencil-test --watch",

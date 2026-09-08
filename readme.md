@@ -4,16 +4,10 @@ A framework-less QR Code Web Component.
 
 ## Usage
 
-The preferred modern consumption model is the custom-element build, which defines `bp-qr-code` without the legacy Stencil ES5/ESM feature-detection loader:
+The preferred modern consumption model is the direct custom-element build, which defines `bp-qr-code` without the legacy Stencil ES5/ESM feature-detection loader:
 
 ```js
 import '@bitpay/qr-code/bp-qr-code';
-```
-
-For a static Stencil `www` build, load the generated ES module directly:
-
-```html
-<script type="module" src="/build/bp-qr-code.esm.js"></script>
 ```
 
 Then use the component anywhere in the document:
@@ -33,11 +27,13 @@ Existing callers that invoke `animateQRCode()` only for its side effect do not n
 
 ## Content Security Policy
 
-Generated QR component assets are required to remain compatible with BitPay's strict script CSP and must not require `script-src 'unsafe-eval'`.
+Generated QR component distribution assets are required to remain compatible with BitPay's strict script CSP and must not require `script-src 'unsafe-eval'`.
 
-`npm run build` scans generated JavaScript in `dist` and `www/build` and fails if it finds `eval(` or `new Function(`. `npm run test:csp` also loads the production browser build in Chromium with `script-src 'self'` and verifies rendering, property updates, the center icon, animation invocation, and the absence of CSP script violations.
+The project deliberately does not generate Stencil's `www` compatibility bundle. That output includes a legacy feature-detection loader which uses dynamic code generation even when the component itself does not. Consumers should use the direct `dist-custom-elements` build instead.
 
-The component still renders its generated SVG string through an `innerHTML` sink. That is not the source of the historical `unsafe-eval` requirement; converting the QR SVG generator to JSX/DOM nodes is intentionally left as a follow-up to avoid changing QR geometry during this toolchain migration.
+`npm run build` scans every generated JavaScript file under `dist/` and fails if it finds `eval(` or `new Function(`. `npm run test:csp` loads `dist/components/bp-qr-code.js` directly in Chromium with `script-src 'self'` and verifies rendering, property updates, the center icon, animation invocation, and the absence of CSP script violations.
+
+The CSP browser fixture allows inline styles because Stencil injects component CSS at runtime; removing invoice-wide `unsafe-inline` is explicitly outside this modernization. The component also still renders its generated SVG string through an `innerHTML` sink. That is not the source of the historical `unsafe-eval` requirement; converting the QR SVG generator to JSX/DOM nodes is intentionally left as a follow-up to avoid changing QR geometry during this toolchain migration.
 
 ## Examples
 
@@ -63,6 +59,8 @@ Node.js 20 or newer is required.
 npm install
 npm start
 ```
+
+`npm start` runs a development watch build. The CSP smoke fixture is served automatically by `npm run test:csp` after a production build.
 
 ### Production build
 

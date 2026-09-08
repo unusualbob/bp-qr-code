@@ -1,7 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { extname, join, relative } from 'node:path';
 
-const roots = ['dist', 'www/build'];
+const root = 'dist';
 const forbidden = [
   { name: 'eval()', pattern: /\beval\s*\(/ },
   { name: 'new Function()', pattern: /\bnew\s+Function\s*\(/ }
@@ -18,14 +18,18 @@ async function collectJavaScriptFiles(directory) {
   return files;
 }
 
+const files = await collectJavaScriptFiles(root);
+if (files.length === 0) {
+  console.error('CSP scan failed: no generated JavaScript was found in dist/.');
+  process.exit(1);
+}
+
 const violations = [];
-for (const root of roots) {
-  for (const file of await collectJavaScriptFiles(root)) {
-    const source = await readFile(file, 'utf8');
-    for (const check of forbidden) {
-      if (check.pattern.test(source)) {
-        violations.push(`${relative(process.cwd(), file)} contains ${check.name}`);
-      }
+for (const file of files) {
+  const source = await readFile(file, 'utf8');
+  for (const check of forbidden) {
+    if (check.pattern.test(source)) {
+      violations.push(`${relative(process.cwd(), file)} contains ${check.name}`);
     }
   }
 }
@@ -38,4 +42,6 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log(`CSP scan passed: no eval() or new Function() found in generated JavaScript.`);
+console.log(
+  `CSP scan passed for ${files.length} generated JavaScript files: no eval() or new Function() found.`
+);

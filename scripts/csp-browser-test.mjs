@@ -1,10 +1,10 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { extname, join, normalize } from 'node:path';
+import { extname, resolve, sep } from 'node:path';
 import { chromium } from 'playwright';
 
-const root = join(process.cwd(), 'www');
+const root = process.cwd();
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -14,6 +14,8 @@ const contentTypes = {
 const csp = [
   "default-src 'self'",
   "script-src 'self'",
+  // Stencil injects component CSS at runtime. Removing style unsafe-inline is
+  // separate from this project's script-src unsafe-eval objective.
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "object-src 'none'",
@@ -23,11 +25,10 @@ const csp = [
 const server = createServer(async (request, response) => {
   try {
     const requestPath = new URL(request.url || '/', 'http://localhost').pathname;
-    const normalized = normalize(requestPath === '/' ? '/index.html' : requestPath).replace(
-      /^(\.\.[/\\])+/, 
-      ''
-    );
-    const file = join(root, normalized);
+    const requested = requestPath === '/' ? '/test/csp/index.html' : requestPath;
+    const file = resolve(root, `.${requested}`);
+    if (file !== root && !file.startsWith(`${root}${sep}`)) throw new Error('invalid path');
+
     const fileStat = await stat(file);
     if (!fileStat.isFile()) throw new Error('not a file');
 
@@ -42,7 +43,7 @@ const server = createServer(async (request, response) => {
   }
 });
 
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+await new Promise(resolveServer => server.listen(0, '127.0.0.1', resolveServer));
 const address = server.address();
 if (!address || typeof address === 'string') throw new Error('Unable to start CSP test server');
 
@@ -56,17 +57,21 @@ page.on('console', message => {
 page.on('pageerror', error => pageErrors.push(error.message));
 
 try {
-  await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: 'networkidle' });
+  await page.goto(`http://127.0.0.1:${address.port}/test/csp/index.html`, {
+    waitUntil: 'networkidle'
+  });
   await page.waitForFunction(() => customElements.get('bp-qr-code'));
+  await page.waitForFunction(() => document.querySelector('#qr1')?.shadowRoot?.querySelector('svg'));
 
   const result = await page.evaluate(async () => {
     const qr = document.querySelector('#qr1');
     if (!qr) throw new Error('QR fixture was not found');
-    await qr.componentOnReady?.();
 
     const initialSvg = Boolean(qr.shadowRoot?.querySelector('svg'));
     const iconNodes = qr.shadowRoot?.querySelector('slot[name="icon"]')?.assignedNodes().length || 0;
-    const rendered = new Promise(resolve => qr.addEventListener('codeRendered', resolve, { once: true }));
+    const rendered = new Promise(resolveRendered =>
+      qr.addEventListener('codeRendered', resolveRendered, { once: true })
+    );
     qr.contents = 'bitcoin:?r=https://bitpay.com/i/csp-updated';
     await rendered;
     const moduleCount = await qr.getModuleCount();
@@ -90,5 +95,5 @@ try {
   console.log('CSP browser test passed under script-src self without unsafe-eval.');
 } finally {
   await browser.close();
-  await new Promise(resolve => server.close(resolve));
+  await new Promise(resolveServer => server.close(resolveServer));
 }
