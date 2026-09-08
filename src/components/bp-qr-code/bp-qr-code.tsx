@@ -3,19 +3,15 @@ import {
   Element,
   Event,
   EventEmitter,
-  Prop,
+  h,
   Method,
+  Prop,
   State,
   Watch
 } from '@stencil/core';
 
 import { addPlugin, animate } from 'just-animate';
 import { waapiPlugin } from 'just-animate/lib.es2015/web';
-addPlugin(waapiPlugin);
-
-// Un-comment to design animations:
-import { player } from 'just-animate/lib.es2015/tools';
-
 import qrcode from 'qrcode-generator';
 import {
   getAnimationPreset,
@@ -23,6 +19,8 @@ import {
   QRCodeEntity,
   AnimationPreset
 } from './animations';
+
+addPlugin(waapiPlugin);
 
 @Component({
   tag: 'bp-qr-code',
@@ -33,17 +31,17 @@ export class BpQRCode {
   @Element() qrCodeElement: HTMLElement;
 
   @Prop() contents = '';
-  @Prop() protocol: string = '';
-  @Prop() moduleColor: string = '#000';
-  @Prop() positionRingColor: string = '#000';
-  @Prop() positionCenterColor: string = '#000';
-  @Prop() maskXToYRatio: number = 1;
-  @Prop() legacy: boolean = false;
+  @Prop() protocol = '';
+  @Prop() moduleColor = '#000';
+  @Prop() positionRingColor = '#000';
+  @Prop() positionCenterColor = '#000';
+  @Prop() maskXToYRatio = 1;
+  @Prop() legacy = false;
 
-  @State() data: string;
-  @State() moduleCount: number;
+  @State() data = '';
+  @State() moduleCount = 0;
 
-  @Event() codeRendered: EventEmitter;
+  @Event() codeRendered: EventEmitter<void>;
 
   /**
    * The first update must run after load to query the created shadowRoot for
@@ -65,55 +63,38 @@ export class BpQRCode {
   @Watch('maskXToYRatio')
   @Watch('legacy')
   updateQR() {
-    /**
-     * E.g. Firefox, as of Firefox 61
-     */
-    const isUsingWebComponentPolyfill =
-      (this.qrCodeElement as any) === this.qrCodeElement.shadowRoot;
-    const realSlot = this.qrCodeElement.shadowRoot.querySelector('slot');
-    const hasSlot = isUsingWebComponentPolyfill
-      ? this.qrCodeElement.querySelector('[slot]')
-        ? true
-        : false
-      : realSlot
-        ? realSlot.assignedNodes().length > 0
-        : false;
+    const realSlot = this.qrCodeElement.shadowRoot?.querySelector('slot');
+    const hasSlot = realSlot ? realSlot.assignedNodes().length > 0 : false;
 
     this.data = this.generateQRCodeSVG(this.contents, hasSlot);
   }
 
+  /**
+   * Modern Stencil exposes public component methods asynchronously. Existing
+   * callers that ignore the return value continue to work unchanged.
+   */
   @Method()
-  animateQRCode(animation?: AnimationPreset | QRCodeAnimation) {
+  async animateQRCode(animation?: AnimationPreset | QRCodeAnimation): Promise<void> {
     this.executeAnimation(
       typeof animation === 'string' ? getAnimationPreset(animation) : animation
     );
   }
 
   @Method()
-  getModuleCount() {
+  async getModuleCount(): Promise<number> {
     return this.moduleCount;
   }
 
   executeAnimation(animation: QRCodeAnimation) {
-    const modules = Array.from(
-      this.qrCodeElement.shadowRoot.querySelectorAll('.module')
-    );
-    const rings = Array.from(
-      this.qrCodeElement.shadowRoot.querySelectorAll('.position-ring')
-    );
-    const centers = Array.from(
-      this.qrCodeElement.shadowRoot.querySelectorAll('.position-center')
-    );
-    const icons = Array.from(
-      this.qrCodeElement.shadowRoot.querySelectorAll('#icon-wrapper')
-    );
+    const shadowRoot = this.qrCodeElement.shadowRoot;
+    if (!shadowRoot) return;
+
+    const modules = Array.from(shadowRoot.querySelectorAll('.module'));
+    const rings = Array.from(shadowRoot.querySelectorAll('.position-ring'));
+    const centers = Array.from(shadowRoot.querySelectorAll('.position-center'));
+    const icons = Array.from(shadowRoot.querySelectorAll('#icon-wrapper'));
     const setEntityType = (array: Element[], entity: QRCodeEntity) => {
-      return array.map(element => {
-        return {
-          element,
-          entityType: entity
-        };
-      });
+      return array.map(element => ({ element, entityType: entity }));
     };
 
     const animationAdditions = [
@@ -122,17 +103,12 @@ export class BpQRCode {
       ...setEntityType(centers, QRCodeEntity.PositionCenter),
       ...setEntityType(icons, QRCodeEntity.Icon)
     ]
-      .map(({ element, entityType }) => {
-        return {
-          element,
-          // SVGElement.dataset is part of the SVG 2.0 draft
-          // TODO: requires a polyfill for Edge:
-          // https://developer.mozilla.org/en-US/docs/Web/API/SVGElement/dataset
-          positionX: parseInt((element as any).dataset.column, 10),
-          positionY: parseInt((element as any).dataset.row, 10),
-          entityType: entityType
-        };
-      })
+      .map(({ element, entityType }) => ({
+        element,
+        positionX: parseInt((element as HTMLElement).dataset.column || '0', 10),
+        positionY: parseInt((element as HTMLElement).dataset.row || '0', 10),
+        entityType
+      }))
       .map(entityInfo =>
         animation(
           entityInfo.element,
@@ -143,12 +119,7 @@ export class BpQRCode {
         )
       );
 
-    const timeline = animate(animationAdditions);
-
-    // Un-comment to design animations:
-    player(timeline);
-
-    timeline.play();
+    animate(animationAdditions).play();
   }
 
   generateQRCodeSVG(contents: string, maskCenter: boolean) {
@@ -180,7 +151,7 @@ export class BpQRCode {
         cy="${-coordinateShift}"/>
     ${
       this.legacy
-        ? void 0
+        ? ''
         : renderQRPositionDetectionPatterns(
             this.moduleCount,
             margin,
@@ -248,7 +219,7 @@ export class BpQRCode {
       <path class="position-ring" fill="${ringFill}" data-column="${x -
         margin}" data-row="${y - margin}" d="M${x - coordinateShift} ${y -
         0.5 -
-        coordinateShift}h6s.5 0 .5 .5v6s0 .5-.5 .5h-6s-.5 0-.5-.5v-6s0-.5 .5-.5zm.75 1s-.25 0-.25 .25v4.5s0 .25 .25 .25h4.5s.25 0 .25-.25v-4.5s0-.25 -.25 -.25h-4.5z"/>
+        coordinateShift}h6s.5 0 .5 .5v6s0 .5-.5 .5h-6s-.5 0-.5-.5v-6s0-.5 .5-.5zm.75 1s-.25 0-.25 .25v4.5s0 .25 .25 .25h4.5s.25 0 .25-.25v-4.5s0-.25-.25-.25h-4.5z"/>
       <path class="position-center" fill="${centerFill}" data-column="${x -
         margin +
         2}" data-row="${y - margin + 2}" d="M${x + 2 - coordinateShift} ${y +
@@ -258,7 +229,7 @@ export class BpQRCode {
     }
 
     function renderQRModulesSVG(
-      qr: QRCode,
+      qrCode: ReturnType<typeof qrcode>,
       count: number,
       margin: number,
       maskCenter: boolean,
@@ -272,7 +243,7 @@ export class BpQRCode {
         const positionX = column + margin;
         for (let row = 0; row < count; row += 1) {
           if (
-            qr.isDark(column, row) &&
+            qrCode.isDark(column, row) &&
             (legacy ||
               (!isPositioningElement(row, column, count) &&
                 !isRemovableCenter(
@@ -360,6 +331,12 @@ export class BpQRCode {
             <slot name="icon" />
           </div>
         </div>
+        {/*
+          This remains an innerHTML sink for compatibility with the existing SVG
+          generator. The SVG is generated only from QR data and component color
+          values. Replacing it with JSX/DOM nodes is intentionally left for a
+          follow-up so the CSP toolchain migration does not alter QR geometry.
+        */}
         <div innerHTML={this.data} />
       </div>
     );

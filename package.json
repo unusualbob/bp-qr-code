@@ -2,52 +2,62 @@
   "name": "@bitpay/qr-code",
   "version": "0.0.1",
   "description": "BitPay's QR Code Web Component",
-  "module": "dist/esm/index.js",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.js",
   "types": "dist/types/components.d.ts",
   "collection": "dist/collection/collection-manifest.json",
+  "exports": {
+    ".": {
+      "import": "./dist/bp-qr-code/bp-qr-code.esm.js",
+      "require": "./dist/bp-qr-code/bp-qr-code.cjs.js"
+    },
+    "./bp-qr-code": {
+      "import": "./dist/components/bp-qr-code.js",
+      "types": "./dist/components/bp-qr-code.d.ts"
+    },
+    "./loader": {
+      "import": "./loader/index.js",
+      "require": "./loader/index.cjs",
+      "types": "./loader/index.d.ts"
+    }
+  },
   "files": [
-    "dist/"
+    "dist/",
+    "loader/"
   ],
   "scripts": {
-    "build": "stencil build",
+    "build": "stencil build --prod && npm run csp:check",
     "watch": "stencil build --dev --watch --serve",
     "watch:prod": "stencil build --watch --serve --prod",
-    "serve": "stencil-dev-server",
     "start": "npm run watch",
-    "test": "jest",
-    "test.watch": "jest --watch"
+    "test": "stencil-test --prod",
+    "test:watch": "stencil-test --watch",
+    "test:csp": "node scripts/csp-browser-test.mjs",
+    "csp:check": "node scripts/check-csp.mjs",
+    "ci": "npm test && npm run build && npm run test:csp"
   },
   "dependencies": {
-    "just-animate": "^2.5.0",
-    "qrcode-generator": "^1.4.0"
+    "just-animate": "2.6.2",
+    "qrcode-generator": "1.4.4"
   },
   "devDependencies": {
-    "@stencil/core": "^0.10.2",
-    "@types/jest": "^21.1.1",
-    "jest": "^21.2.1"
+    "@stencil/core": "4.44.2",
+    "@stencil/vitest": "1.14.0",
+    "@types/node": "^24.6.2",
+    "playwright": "1.63.0",
+    "vitest": "4.1.11"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ionic-team/stencil-component-starter.git"
+    "url": "git+https://github.com/bitpay/qr-code.git"
   },
-  "author": "Ionic Team",
+  "author": "BitPay",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ionic-team/stencil"
+    "url": "https://github.com/bitpay/qr-code/issues"
   },
-  "homepage": "https://github.com/ionic-team/stencil",
-  "jest": {
-    "transform": {
-      "^.+\\.(ts|tsx)$": "<rootDir>/node_modules/@stencil/core/testing/jest.preprocessor.js"
-    },
-    "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(tsx?|jsx?)$",
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js",
-      "json",
-      "jsx"
-    ]
-  }
+  "homepage": "https://github.com/bitpay/qr-code"
 }

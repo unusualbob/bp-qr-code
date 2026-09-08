@@ -4,53 +4,60 @@ A framework-less QR Code Web Component.
 
 ## Usage
 
-Import the `bp-qr-code` component properly using your build system/framework, or use the standalone script:
+The preferred modern consumption model is the custom-element build, which defines `bp-qr-code` without the legacy Stencil ES5/ESM feature-detection loader:
+
+```js
+import '@bitpay/qr-code/bp-qr-code';
+```
+
+For a static Stencil `www` build, load the generated ES module directly:
 
 ```html
-<script src="/path/to/bp-qr-code.js"></script>
+<script type="module" src="/build/bp-qr-code.esm.js"></script>
 ```
 
 Then use the component anywhere in the document:
 
 ```html
-<bp-qr-code></bp-qr-code>
+<bp-qr-code contents="bitcoin:?r=https://bitpay.com/i/example"></bp-qr-code>
 ```
 
-To use the `animateQRCode` method, the [Web Animations API polyfill](https://github.com/web-animations/web-animations-js) is required for [good browser support](https://github.com/web-animations/web-animations-js/blob/c5bf98eb447a76910297b8ccd011ace3310d1372/docs/support.md#browser-support). Import it properly with your build system, or
+Modern browsers provide the Web Animations API used by `animateQRCode()`. The public Stencil methods are asynchronous in modern Stencil, so callers that use their return values should await them:
 
-```html
-<script src="https://unpkg.com/web-animations-js@2.3.1/web-animations.min.js"></script>
+```js
+await document.getElementById('qr1').animateQRCode('MaterializeIn');
+const moduleCount = await document.getElementById('qr1').getModuleCount();
 ```
+
+Existing callers that invoke `animateQRCode()` only for its side effect do not need to change.
+
+## Content Security Policy
+
+Generated QR component assets are required to remain compatible with BitPay's strict script CSP and must not require `script-src 'unsafe-eval'`.
+
+`npm run build` scans generated JavaScript in `dist` and `www/build` and fails if it finds `eval(` or `new Function(`. `npm run test:csp` also loads the production browser build in Chromium with `script-src 'self'` and verifies rendering, property updates, the center icon, animation invocation, and the absence of CSP script violations.
+
+The component still renders its generated SVG string through an `innerHTML` sink. That is not the source of the historical `unsafe-eval` requirement; converting the QR SVG generator to JSX/DOM nodes is intentionally left as a follow-up to avoid changing QR geometry during this toolchain migration.
 
 ## Examples
 
-Here's an example taking advantage of all configuration options:
-
 ```html
- <bp-qr-code
-    id="qr1"
-    contents="customprotocol:?r=https://bitpay.com/i/exampleh3mCKGUna7v9S1z"
-    module-color="#1c7d43"
-    position-ring-color="#13532d"
-    position-center-color="#1c7d43"
-    mask-x-to-y-ratio="1.2"
-    style="width: 200px; height: 200px; background-color: #fff">
-    <img src="assets/icon.svg" slot="icon">
-  </bp-qr-code>
-  <script>
-    setTimeout(() => {
-      document
-        .getElementById('qr1')
-        .animateQRCode('MaterializeIn');
-    }, 1000);
-  </script>
+<bp-qr-code
+  id="qr1"
+  contents="customprotocol:?r=https://bitpay.com/i/exampleh3mCKGUna7v9S1z"
+  module-color="#1c7d43"
+  position-ring-color="#13532d"
+  position-center-color="#1c7d43"
+  mask-x-to-y-ratio="1.2"
+  style="width: 200px; height: 200px; background-color: #fff"
+>
+  <img src="assets/icon.svg" slot="icon" />
+</bp-qr-code>
 ```
-
-For more examples, [see `index.html`](./src/index.html) or clone this repo, `npm install`, and `npm start`.
 
 ## Contributing
 
-You'll need [Node.js](https://nodejs.org/en/download/), then:
+Node.js 20 or newer is required.
 
 ```bash
 npm install
@@ -67,4 +74,14 @@ npm run build
 
 ```bash
 npm test
+```
+
+### Run the real-browser CSP smoke test
+
+Build first, install Chromium for Playwright if necessary, then:
+
+```bash
+npm run build
+npx playwright install chromium
+npm run test:csp
 ```
