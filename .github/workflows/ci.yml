@@ -2,36 +2,20 @@ name: CI
 
 on:
   push:
-    branches:
-      - master
-      - feature/csp-safe-stencil-modernization
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - name: Refresh lockfile for the modernization branch
-        if: github.event_name == 'push' && github.ref_name == 'feature/csp-safe-stencil-modernization'
-        run: |
-          npm install --package-lock-only
-          if ! git diff --quiet -- package-lock.json; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: refresh npm lockfile"
-            git push
-          fi
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run ci

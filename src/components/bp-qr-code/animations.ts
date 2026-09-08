@@ -1,4 +1,3 @@
-import { AddAnimationOptions } from 'just-animate/types/lib/core/types';
 import {
   innermostPoint,
   distanceBetween,
@@ -6,6 +5,19 @@ import {
   applyToValues,
   scaleOscillationsToOffset
 } from './animation-utils';
+
+/**
+ * The QR animation presets only use this stable subset of just-animate's
+ * options. Keeping the shape local avoids coupling the public component to a
+ * private type path inside just-animate.
+ */
+export interface QRCodeAnimationOptions {
+  targets: any;
+  from?: number;
+  duration?: number;
+  easing?: string;
+  web?: Record<string, any>;
+}
 
 export enum QRCodeEntity {
   Module = 'module',
@@ -20,7 +32,7 @@ export type QRCodeAnimation = (
   modulePositionY: number,
   count: number,
   entityType: QRCodeEntity
-) => AddAnimationOptions;
+) => QRCodeAnimationOptions;
 
 export enum AnimationPreset {
   FadeInTopDown = 'FadeInTopDown',
